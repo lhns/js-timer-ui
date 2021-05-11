@@ -1,0 +1,302 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Timers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+        crossorigin="anonymous"></script>
+
+<!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
+<script async src="https://ga.jspm.io/npm:es-module-shims@0.10.1/dist/es-module-shims.min.js"></script>
+
+<!--
+  JSPM Generator Import Map
+  https://generator.jspm.io/
+-->
+<script type="importmap">
+  {
+    "imports": {
+      "react": "https://ga.jspm.io/npm:react@17.0.2/dev.index.js",
+      "react-dom": "https://ga.jspm.io/npm:react-dom@17.0.2/dev.index.js",
+      "lodash.uniqueid": "https://ga.jspm.io/npm:lodash.uniqueid@4.0.1/index.js",
+      "htm": "https://unpkg.com/htm?module",
+      "date-fns": "https://ga.jspm.io/npm:date-fns@2.19.0/index.js",
+      "react-timeline-range-slider": "https://ga.jspm.io/npm:react-timeline-range-slider@1.4.1/dist/index.js"
+    },
+    "scopes": {
+      "https://ga.jspm.io/": {
+        "object-assign": "https://ga.jspm.io/npm:object-assign@4.1.1/index.js",
+        "scheduler": "https://ga.jspm.io/npm:scheduler@0.20.2/dev.index.js",
+        "scheduler/tracing": "https://ga.jspm.io/npm:scheduler@0.20.2/dev.tracing.js"
+      }
+    }
+  }
+</script>
+
+<style>
+    .react_time_range__time_range_container {
+        padding: 30px 18px;
+        width: auto;
+        touch-action: none;
+    }
+
+    .react_time_range__handle_wrapper {
+        -webkit-tap-highlight-color: initial;
+    }
+
+    .react_time_range__tick_label {
+        font-size: 14px;
+        transform: translateX(-0.5em);
+    }
+
+    .slider-container {
+        width: max(100%, 68em);
+    }
+
+    .device-label {
+        user-select: none;
+        cursor: pointer;
+    }
+
+    .device-label .collapse-arrow {
+        margin-right: .5rem;
+        display: inline-block;
+        font-size: 88%;
+        transition-duration: 0.1s;
+        transition-property: transform;
+    }
+
+    .device-label:not(.collapsed) .collapse-arrow {
+        transform: rotate(90deg);
+    }
+
+    .timerange-button {
+        margin-right: .5rem;
+        cursor: pointer;
+    }
+
+    .scroll-handle-x {
+        margin-top: 20px;
+        height: 5px;
+        margin-bottom: 20px;
+        opacity: 0.8;
+        background-size: 10px;
+        background-image: repeating-linear-gradient(to right, #c8cacc, #c8cacc 1px, #ffffff00 1px, #ffffff00);
+    }
+</style>
+
+<div id="root"></div>
+
+<script type="module">
+    import React from 'react'
+    import ReactDOM from 'react-dom'
+    import uniqueId from 'lodash.uniqueid';
+    import htm from 'htm'
+
+    const html = htm.bind(React.createElement);
+
+    import {set} from 'date-fns'
+    import TimeRange from 'react-timeline-range-slider'
+
+    const now = new Date()
+    const getTodayAtSpecificHour = (hour = 12) =>
+        set(now, {hours: hour, minutes: 0, seconds: 0, milliseconds: 0})
+
+    const startTime = getTodayAtSpecificHour(-12)
+    const endTime = getTodayAtSpecificHour(12)
+
+    const toTimeRange = ([start, end]) => {
+        let startHours = Math.trunc(start / 60);
+        let endHours = Math.trunc(end / 60);
+        if (startHours >= 12) {
+            if (startHours <= endHours) endHours -= 24
+            startHours -= 24
+        }
+        if (endHours > 12) endHours = 12;
+        return [
+            set(now, {hours: startHours, minutes: start % 60, seconds: 0, milliseconds: 0}),
+            set(now, {hours: endHours, minutes: end % 60, seconds: 0, milliseconds: 0})
+        ];
+    }
+
+    const fromTimeRange = ([start, end]) => [
+        start.getHours() * 60 + start.getMinutes(),
+        end.getHours() * 60 + end.getMinutes()
+    ]
+
+    class TimeSlider extends React.Component {
+        constructor(props) {
+            super(props);
+            this.state = {
+                error: false,
+                updateError: false
+            }
+        }
+
+        errorHandler = ({error}) => this.setState({error})
+
+        onChangeCallback = selectedInterval => {
+            if (!this.state.updateError && typeof this.props.onChange !== 'undefined')
+                this.props.onChange(fromTimeRange(selectedInterval))
+            this.setState({selectedInterval})
+        }
+
+        componentDidUpdate(prevProps, prevState) {
+            if (JSON.stringify(this.props.disabledTimeRanges) !== JSON.stringify(prevProps.disabledTimeRanges)) {
+                this.setState(
+                    () => ({updateError: true}),
+                    () => this.setState(() => ({updateError: false}))
+                )
+            }
+        }
+
+        render() {
+            const {disabledTimeRanges, timeRange} = this.props
+            const {error, updateError} = this.state
+            return html`
+                <${TimeRange.default} ...${
+                        {
+                            error: error,
+                            ticksNumber: (24) * 2,
+                            selectedInterval: toTimeRange([timeRange[0], timeRange[1] + (updateError ? 1 : 0)]),
+                            timelineInterval: [startTime, endTime],
+                            onUpdateCallback: this.errorHandler,
+                            onChangeCallback: this.onChangeCallback,
+                            disabledIntervals: disabledTimeRanges
+                                    .map(e => toTimeRange(e))
+                                    .map(([start, end]) => ({start, end}))
+                        }
+                }/>
+            `
+        }
+    }
+
+    class App extends React.Component {
+        constructor(props) {
+            super(props);
+            this.state = {
+                id: uniqueId(),
+                schedules: {}
+            }
+        }
+
+        componentDidMount() {
+            this.receiveUpdate();
+            let self = this;
+            setInterval(() => this.receiveUpdate.call(self), 2000);
+        }
+
+        receiveUpdate() {
+            let self = this;
+            fetch("/water/api")
+                .then(res => res.json())
+                .then(
+                    (result) => {
+                        self.setState({schedules: result});
+                    },
+                    (error) => {
+                        self.setState({schedules: {}});
+                    }
+                )
+        }
+
+        sendUpdate(schedules) {
+            let self = this;
+            fetch("/water/api", {
+                method: 'POST',
+                mode: 'cors',
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                redirect: 'follow',
+                referrerPolicy: 'no-referrer',
+                body: JSON.stringify(schedules)
+            })
+                .then(res => res.json())
+                .then(
+                    (result) => {
+                        self.setState({schedules: result});
+                    },
+                    (error) => {
+                        self.setState({schedules: {}});
+                    }
+                )
+        }
+
+        render() {
+            const {schedules} = this.state
+            return Object.entries(schedules).map(([key, schedule]) => html`
+                <div key="${key}" className="flex mb-4">
+                    <div className="d-flex flex-row">
+                        <h1 className="device-label d-flex flex-row collapsed ${schedule.active ? "text-primary" : ""}"
+                            data-bs-toggle="collapse" data-bs-target="#collapse-${key}">
+                            <div><i class="bi bi-chevron-right collapse-arrow"></i></div>
+                            ${schedule.title}
+                        </h1>
+                        <div className="flex-fill"></div>
+                        <form>
+                            <div className="btn-group" role="group">
+                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-1"
+                                       autoComplete="off" checked=${schedule.override === null}
+                                       onChange=${() => this.setState(state => (state.schedules[key].override = null, this.sendUpdate(state.schedules), state))}/>
+                                <label className="btn btn-outline-primary" htmlFor="mode-radio-${key}-1">Auto</label>
+                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-2"
+                                       autoComplete="off" checked=${schedule.override === true}
+                                       onChange=${() => this.setState(state => (state.schedules[key].override = true, this.sendUpdate(state.schedules), state))}/>
+                                <label className="btn btn-outline-success" htmlFor="mode-radio-${key}-2">On</label>
+                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-3"
+                                       autoComplete="off" checked=${schedule.override === false}
+                                       onChange=${() => this.setState(state => (state.schedules[key].override = false, this.sendUpdate(state.schedules), state))}/>
+                                <label className="btn btn-outline-danger" htmlFor="mode-radio-${key}-3">Off</label>
+                            </div>
+                        </form>
+                    </div>
+                    <div className="collapse mb-3" id="collapse-${key}">
+                        <div className="w-100 mb-3" style=${{overflowX: "auto"}}>
+                            <div className="slider-container">
+                                ${schedule.timeRanges.map((timeRange, i) => html`
+                                    <${TimeSlider} key="${i}" ...${{
+                                        timeRange,
+                                        disabledTimeRanges: schedule.timeRanges.slice(0, i),
+                                        onChange: (timeRange) => {
+                                            this.setState(state => (state.schedules[key].timeRanges[i] = timeRange, state.test = (state.test || 0) + 1, this.sendUpdate(state.schedules), state));
+                                        }
+                                    }}/>
+                                    <div key="handle-${i}" className="w-100 scroll-handle-x"/>
+                                `)}
+                            </div>
+                        </div>
+                        <i className="bi bi-dash-circle text-danger timerange-button" style=${{fontSize: "30px"}}
+                           onClick=${() => {
+                               this.setState(state => (state.schedules[key].timeRanges.pop(), this.sendUpdate(state.schedules), state));
+                           }}></i>
+                        <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
+                           onClick=${() => {
+                               this.setState(state => (state.schedules[key].timeRanges.push([0, 0]), this.sendUpdate(state.schedules), state));
+                           }}></i>
+                    </div>
+                </div>
+            `)
+        }
+    }
+
+    ReactDOM.render(
+        html`
+            <div className="container my-5 d-flex flex-column">
+                <${App}/>
+            </div>
+        `,
+        document.getElementById('root')
+    );
+</script>
+</body>
+</html>
