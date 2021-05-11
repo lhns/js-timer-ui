@@ -5,5 +5,8 @@ Simple Timers for your smart home.
 
 Built with [lizashkod/react-timeline-range-slider](https://github.com/lizashkod/react-timeline-range-slider).
 
+## Screenshots
+![Desktop Screenshot](https://raw.githubusercontent.com/LolHens/js-timer-ui/main/screenshot.png)
+
 ## License
 This project uses the Apache 2.0 License. See the file called LICENSE.
