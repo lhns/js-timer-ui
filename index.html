@@ -98,34 +98,34 @@
 <script type="module">
     import React from 'react'
     import ReactDOM from 'react-dom'
-    import uniqueId from 'lodash.uniqueid';
+    import uniqueId from 'lodash.uniqueid'
     import htm from 'htm'
 
-    const html = htm.bind(React.createElement);
+    const html = htm.bind(React.createElement)
 
     import {set} from 'date-fns'
     import TimeRange from 'react-timeline-range-slider'
 
-    const now = new Date();
+    const now = new Date()
     const getTodayAtSpecificHour = (hour = 12) =>
         set(now, {hours: hour, minutes: 0, seconds: 0, milliseconds: 0})
 
-    const step = 15;
-    const startTime = getTodayAtSpecificHour(-12);
-    const endTime = getTodayAtSpecificHour(12);
+    const step = 15
+    const startTime = getTodayAtSpecificHour(-12)
+    const endTime = getTodayAtSpecificHour(12)
 
     const toTimeRange = ([start, end]) => {
-        let startHours = Math.trunc(start / 60);
-        let endHours = Math.trunc(end / 60);
+        let startHours = Math.trunc(start / 60)
+        let endHours = Math.trunc(end / 60)
         if (startHours >= 12) {
             if (startHours <= endHours) endHours -= 24
             startHours -= 24
         }
-        if (endHours > 12) endHours = 12;
+        if (endHours > 12) endHours = 12
         return [
             set(now, {hours: startHours, minutes: start % 60, seconds: 0, milliseconds: 0}),
             set(now, {hours: endHours, minutes: end % 60, seconds: 0, milliseconds: 0})
-        ];
+        ]
     }
 
     const fromTimeRange = ([start, end]) => [
@@ -135,7 +135,7 @@
 
     class TimeSlider extends React.Component {
         constructor(props) {
-            super(props);
+            super(props)
             this.state = {
                 error: false,
                 updateError: false
@@ -183,7 +183,7 @@
 
     class App extends React.Component {
         constructor(props) {
-            super(props);
+            super(props)
             this.state = {
                 id: uniqueId(),
                 schedules: {}
@@ -191,27 +191,27 @@
         }
 
         componentDidMount() {
-            this.receiveUpdate();
-            let self = this;
-            setInterval(() => this.receiveUpdate.call(self), 2000);
+            this.receiveUpdate()
+            let self = this
+            setInterval(() => this.receiveUpdate.call(self), 2000)
         }
 
         receiveUpdate() {
-            let self = this;
+            let self = this
             fetch("/water/api")
                 .then(res => res.json())
                 .then(
                     (result) => {
-                        self.setState({schedules: result});
+                        self.setState({schedules: result})
                     },
                     (error) => {
-                        self.setState({schedules: {}});
+                        self.setState({schedules: {}})
                     }
                 )
         }
 
         sendUpdate(schedules) {
-            let self = this;
+            let self = this
             fetch("/water/api", {
                 method: 'POST',
                 mode: 'cors',
@@ -226,12 +226,20 @@
                 .then(res => res.json())
                 .then(
                     (result) => {
-                        self.setState({schedules: result});
+                        self.setState({schedules: result})
                     },
                     (error) => {
-                        self.setState({schedules: {}});
+                        self.setState({schedules: {}})
                     }
                 )
+        }
+
+        updateState(f) {
+            this.setState(state => {
+                f(state)
+                this.sendUpdate(state.schedules)
+                return state
+            })
         }
 
         render() {
@@ -241,7 +249,7 @@
                     <div className="d-flex flex-row">
                         <h1 className="device-label d-flex flex-row collapsed ${schedule.active ? "text-primary" : ""}"
                             data-bs-toggle="collapse" data-bs-target="#collapse-${key}">
-                            <div><i class="bi bi-chevron-right collapse-arrow"></i></div>
+                            <div><i className="bi bi-chevron-right collapse-arrow"></i></div>
                             ${schedule.title}
                         </h1>
                         <div className="flex-fill"></div>
@@ -249,15 +257,15 @@
                             <div className="btn-group" role="group">
                                 <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-1"
                                        autoComplete="off" checked=${schedule.override === null}
-                                       onChange=${() => this.setState(state => (state.schedules[key].override = null, this.sendUpdate(state.schedules), state))}/>
+                                       onChange=${() => this.updateState(state => state.schedules[key].override = null)}/>
                                 <label className="btn btn-outline-primary" htmlFor="mode-radio-${key}-1">Auto</label>
                                 <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-2"
                                        autoComplete="off" checked=${schedule.override === true}
-                                       onChange=${() => this.setState(state => (state.schedules[key].override = true, this.sendUpdate(state.schedules), state))}/>
+                                       onChange=${() => this.updateState(state => state.schedules[key].override = true)}/>
                                 <label className="btn btn-outline-success" htmlFor="mode-radio-${key}-2">On</label>
                                 <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-3"
                                        autoComplete="off" checked=${schedule.override === false}
-                                       onChange=${() => this.setState(state => (state.schedules[key].override = false, this.sendUpdate(state.schedules), state))}/>
+                                       onChange=${() => this.updateState(state => state.schedules[key].override = false)}/>
                                 <label className="btn btn-outline-danger" htmlFor="mode-radio-${key}-3">Off</label>
                             </div>
                         </form>
@@ -270,7 +278,10 @@
                                         timeRange,
                                         disabledTimeRanges: schedule.timeRanges.slice(0, i),
                                         onChange: (timeRange) => {
-                                            this.setState(state => (state.schedules[key].timeRanges[i] = timeRange, state.test = (state.test || 0) + 1, this.sendUpdate(state.schedules), state));
+                                            this.updateState(state => {
+                                                state.schedules[key].timeRanges[i] = timeRange
+                                                state.test = (state.test || 0) + 1
+                                            })
                                         }
                                     }}/>
                                     <div key="handle-${i}" className="w-100 scroll-handle-x"/>
@@ -279,13 +290,13 @@
                         </div>
                         <i className="bi bi-dash-circle text-danger timerange-button" style=${{fontSize: "30px"}}
                            onClick=${() => {
-                               this.setState(state => (state.schedules[key].timeRanges.pop(), this.sendUpdate(state.schedules), state));
+                               this.updateState(state => state.schedules[key].timeRanges.pop())
                            }}></i>
                         <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
                            onClick=${() => {
-                               let timeRange = fromTimeRange([startTime, startTime]);
-                               timeRange[1] += step;
-                               this.setState(state => (state.schedules[key].timeRanges.push(timeRange), this.sendUpdate(state.schedules), state));
+                               let timeRange = fromTimeRange([startTime, startTime])
+                               timeRange[1] += step
+                               this.updateState(state => state.schedules[key].timeRanges.push(timeRange))
                            }}></i>
                     </div>
                 </div>
@@ -300,7 +311,7 @@
             </div>
         `,
         document.getElementById('root')
-    );
+    )
 </script>
 </body>
 </html>
