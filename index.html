@@ -106,12 +106,13 @@
     import {set} from 'date-fns'
     import TimeRange from 'react-timeline-range-slider'
 
-    const now = new Date()
+    const now = new Date();
     const getTodayAtSpecificHour = (hour = 12) =>
         set(now, {hours: hour, minutes: 0, seconds: 0, milliseconds: 0})
 
-    const startTime = getTodayAtSpecificHour(-12)
-    const endTime = getTodayAtSpecificHour(12)
+    const step = 15;
+    const startTime = getTodayAtSpecificHour(-12);
+    const endTime = getTodayAtSpecificHour(12);
 
     const toTimeRange = ([start, end]) => {
         let startHours = Math.trunc(start / 60);
@@ -165,6 +166,7 @@
                 <${TimeRange.default} ...${
                         {
                             error: error,
+                            step: step * 60000,
                             ticksNumber: (24) * 2,
                             selectedInterval: toTimeRange([timeRange[0], timeRange[1] + (updateError ? 1 : 0)]),
                             timelineInterval: [startTime, endTime],
@@ -281,7 +283,9 @@
                            }}></i>
                         <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
                            onClick=${() => {
-                               this.setState(state => (state.schedules[key].timeRanges.push([0, 0]), this.sendUpdate(state.schedules), state));
+                               let timeRange = fromTimeRange([startTime, startTime]);
+                               timeRange[1] += step;
+                               this.setState(state => (state.schedules[key].timeRanges.push(timeRange), this.sendUpdate(state.schedules), state));
                            }}></i>
                     </div>
                 </div>
