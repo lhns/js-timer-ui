@@ -7,11 +7,12 @@
 </head>
 <body>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet"
-      integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
         crossorigin="anonymous"></script>
 
 <!-- ES Module Shims: Import maps polyfill for modules browsers without import maps support (all except Chrome 89+) -->
@@ -181,12 +182,32 @@
         }
     }
 
+    class Tooltip extends React.Component {
+        constructor(props) {
+            super(props)
+            this.tooltip = React.createRef()
+        }
+
+        componentDidMount() {
+            new bootstrap.Tooltip(this.tooltip.current)
+        }
+
+        render() {
+            return html`
+                <div ref=${this.tooltip} data-bs-toggle="tooltip" data-bs-placement="bottom" title=${this.props.title}>
+                    ${this.props.children}
+                </div>
+            `
+        }
+    }
+
     class App extends React.Component {
         constructor(props) {
             super(props)
             this.state = {
                 id: uniqueId(),
-                schedules: {}
+                indicators: [],
+                devices: {}
             }
         }
 
@@ -202,15 +223,21 @@
                 .then(res => res.json())
                 .then(
                     (result) => {
-                        self.setState({schedules: result})
+                        self.setState({
+                            indicators: result.indicators,
+                            devices: result.devices
+                        })
                     },
                     (error) => {
-                        self.setState({schedules: {}})
+                        self.setState({
+                            indicators: [],
+                            devices: {}
+                        })
                     }
                 )
         }
 
-        sendUpdate(schedules) {
+        sendUpdate(devices) {
             let self = this
             fetch("/water/api", {
                 method: 'POST',
@@ -221,15 +248,21 @@
                 },
                 redirect: 'follow',
                 referrerPolicy: 'no-referrer',
-                body: JSON.stringify(schedules)
+                body: JSON.stringify(devices)
             })
                 .then(res => res.json())
                 .then(
                     (result) => {
-                        self.setState({schedules: result})
+                        self.setState({
+                            indicators: result.indicators,
+                            devices: result.devices
+                        })
                     },
                     (error) => {
-                        self.setState({schedules: {}})
+                        self.setState({
+                            indicators: [],
+                            devices: {}
+                        })
                     }
                 )
         }
@@ -237,76 +270,95 @@
         updateState(f) {
             this.setState(state => {
                 f(state)
-                this.sendUpdate(state.schedules)
+                this.sendUpdate(state.devices)
                 return state
             })
         }
 
         render() {
-            const {schedules} = this.state
-            return Object.entries(schedules).map(([key, schedule]) => html`
-                <div key="${key}" className="flex mb-4">
-                    <div className="d-flex flex-row">
-                        <h1 className="device-label d-flex flex-row collapsed ${schedule.active ? "text-primary" : ""}"
-                            data-bs-toggle="collapse" data-bs-target="#collapse-${key}">
-                            <div><i className="bi bi-chevron-right collapse-arrow"></i></div>
-                            ${schedule.title}
-                        </h1>
-                        <div className="flex-fill"></div>
-                        <form>
-                            <div className="btn-group" role="group">
-                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-1"
-                                       autoComplete="off" checked=${schedule.override === null}
-                                       onChange=${() => this.updateState(state => state.schedules[key].override = null)}/>
-                                <label className="btn btn-outline-primary" htmlFor="mode-radio-${key}-1">Auto</label>
-                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-2"
-                                       autoComplete="off" checked=${schedule.override === true}
-                                       onChange=${() => this.updateState(state => state.schedules[key].override = true)}/>
-                                <label className="btn btn-outline-success" htmlFor="mode-radio-${key}-2">On</label>
-                                <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-3"
-                                       autoComplete="off" checked=${schedule.override === false}
-                                       onChange=${() => this.updateState(state => state.schedules[key].override = false)}/>
-                                <label className="btn btn-outline-danger" htmlFor="mode-radio-${key}-3">Off</label>
-                            </div>
-                        </form>
-                    </div>
-                    <div className="collapse mb-3" id="collapse-${key}">
-                        <div className="w-100 mb-3" style=${{overflowX: "auto"}}>
-                            <div className="slider-container">
-                                ${schedule.timeRanges.map((timeRange, i) => html`
-                                    <${TimeSlider} key="${i}" ...${{
-                                        timeRange,
-                                        disabledTimeRanges: schedule.timeRanges.slice(0, i),
-                                        onChange: (timeRange) => {
-                                            this.updateState(state => {
-                                                state.schedules[key].timeRanges[i] = timeRange
-                                                state.test = (state.test || 0) + 1
-                                            })
-                                        }
-                                    }}/>
-                                    <div key="handle-${i}" className="w-100 scroll-handle-x"/>
-                                `)}
-                            </div>
-                        </div>
-                        <i className="bi bi-dash-circle text-danger timerange-button" style=${{fontSize: "30px"}}
-                           onClick=${() => {
-                               this.updateState(state => state.schedules[key].timeRanges.pop())
-                           }}></i>
-                        <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
-                           onClick=${() => {
-                               let timeRange = fromTimeRange([startTime, startTime])
-                               timeRange[1] += step
-                               this.updateState(state => state.schedules[key].timeRanges.push(timeRange))
-                           }}></i>
-                    </div>
+            const {indicators, devices} = this.state
+            return html`
+                <div key="indicators" className="d-flex flex-row mb-3">
+                    <div className="flex-fill"></div>
+                    ${indicators.map((indicator, i) => {
+                        var icon = null
+                        if (indicator.type === "rain") {
+                            icon = html`<i className="bi bi-droplet"></i>`
+                        }
+
+                        return html`
+                            <${Tooltip} key="${i}" title="${indicator.description}">
+                                <h1 className="mx-2">${icon}</h1>
+                            <//>
+                        `
+                    })}
+                    <div className="flex-fill"></div>
                 </div>
-            `)
+                ${Object.entries(devices).map(([key, device]) => html`
+                    <div key="device-${key}" className="d-flex flex-column mb-4">
+                        <div className="d-flex flex-row">
+                            <h1 className="device-label d-flex flex-row collapsed ${device.active ? "text-primary" : ""}"
+                                data-bs-toggle="collapse" data-bs-target="#collapse-${key}">
+                                <div><i className="bi bi-chevron-right collapse-arrow"></i></div>
+                                ${device.title}
+                            </h1>
+                            <div className="flex-fill"></div>
+                            <form>
+                                <div className="btn-group" role="group">
+                                    <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-1"
+                                           autoComplete="off" checked=${device.override === null}
+                                           onChange=${() => this.updateState(state => state.devices[key].override = null)}/>
+                                    <label className="btn btn-outline-primary"
+                                           htmlFor="mode-radio-${key}-1">Auto</label>
+                                    <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-2"
+                                           autoComplete="off" checked=${device.override === true}
+                                           onChange=${() => this.updateState(state => state.devices[key].override = true)}/>
+                                    <label className="btn btn-outline-success" htmlFor="mode-radio-${key}-2">On</label>
+                                    <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-3"
+                                           autoComplete="off" checked=${device.override === false}
+                                           onChange=${() => this.updateState(state => state.devices[key].override = false)}/>
+                                    <label className="btn btn-outline-danger" htmlFor="mode-radio-${key}-3">Off</label>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="collapse mb-3" id="collapse-${key}">
+                            <div className="w-100 mb-3" style=${{overflowX: "auto"}}>
+                                <div className="slider-container">
+                                    ${device.timeRanges.map((timeRange, i) => html`
+                                        <${TimeSlider} key="${i}" ...${{
+                                            timeRange,
+                                            disabledTimeRanges: device.timeRanges.slice(0, i),
+                                            onChange: (timeRange) => {
+                                                this.updateState(state => {
+                                                    state.devices[key].timeRanges[i] = timeRange
+                                                    state.test = (state.test || 0) + 1
+                                                })
+                                            }
+                                        }}/>
+                                        <div key="handle-${i}" className="w-100 scroll-handle-x"/>
+                                    `)}
+                                </div>
+                            </div>
+                            <i className="bi bi-dash-circle text-danger timerange-button" style=${{fontSize: "30px"}}
+                               onClick=${() => {
+                                   this.updateState(state => state.devices[key].timeRanges.pop())
+                               }}></i>
+                            <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
+                               onClick=${() => {
+                                   let timeRange = fromTimeRange([startTime, startTime])
+                                   timeRange[1] += step
+                                   this.updateState(state => state.devices[key].timeRanges.push(timeRange))
+                               }}></i>
+                        </div>
+                    </div>
+                `)}
+            `
         }
     }
 
     ReactDOM.render(
         html`
-            <div className="container my-5 d-flex flex-column">
+            <div className="container mt-4 mb-5 d-flex flex-column">
                 <${App}/>
             </div>
         `,

@@ -1,24 +1,32 @@
 {
-  "wein": {
-    "title": "Wein & Himbeeren",
-    "override": false,
-    "timeRanges": [
-      [
-        960,
-        1050
-      ]
-    ],
-    "active": true
-  },
-  "wintergarten": {
-    "title": "Wintergarten",
-    "override": null,
-    "timeRanges": [
-      [
-        1020,
-        1080
-      ]
-    ],
-    "active": false
+  "indicators": [
+    {
+      "type": "rain",
+      "description": ""
+    }
+  ],
+  "devices": {
+    "wein": {
+      "title": "Wein & Himbeeren",
+      "override": false,
+      "timeRanges": [
+        [
+          960,
+          1050
+        ]
+      ],
+      "active": true
+    },
+    "wintergarten": {
+      "title": "Wintergarten",
+      "override": null,
+      "timeRanges": [
+        [
+          1020,
+          1080
+        ]
+      ],
+      "active": false
+    }
   }
 }
