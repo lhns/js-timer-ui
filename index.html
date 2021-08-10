@@ -79,6 +79,10 @@
         transform: rotate(90deg);
     }
 
+    .indicator {
+        cursor: pointer;
+    }
+
     .timerange-button {
         margin-right: .5rem;
         cursor: pointer;
@@ -201,6 +205,35 @@
         }
     }
 
+    class Indicator extends React.Component {
+        constructor(props) {
+            super(props)
+        }
+
+        render() {
+            const {indicator, small} = this.props
+
+            var icon = null
+            if (indicator.type === "rain") {
+                icon = html`<i className="bi bi-droplet"></i>`
+            } else if (indicator.type === "moisture") {
+                icon = html`<i className="bi bi-moisture"></i>`
+            }
+
+            const H = small ? "h4" : "h1"
+            return html`
+                <${Tooltip} title="${indicator.description}">
+                    <${H} className="indicator ${small ? "mx-1" : "mx-2"} d-flex flex-row">
+                        ${icon}
+                        <div className="${indicator.text == null ? "d-none" : ""} ${small ? "mx-1" : "mx-2"}">
+                            ${indicator.text}
+                        </div>
+                    <//>
+                <//>
+            `
+        }
+    }
+
     class App extends React.Component {
         constructor(props) {
             super(props)
@@ -277,31 +310,26 @@
 
         render() {
             const {indicators, devices} = this.state
+
             return html`
                 <div key="indicators" className="d-flex flex-row mb-3">
                     <div className="flex-fill"></div>
-                    ${indicators.map((indicator, i) => {
-                        var icon = null
-                        if (indicator.type === "rain") {
-                            icon = html`<i className="bi bi-droplet"></i>`
-                        }
-
-                        return html`
-                            <${Tooltip} key="${i}" title="${indicator.description}">
-                                <h1 className="mx-2">${icon}</h1>
-                            <//>
-                        `
-                    })}
+                    ${(indicators || []).map((indicator, i) => html`
+                        <${Indicator} key="${i}" indicator=${indicator}/>
+                    `)}
                     <div className="flex-fill"></div>
                 </div>
                 ${Object.entries(devices).map(([key, device]) => html`
                     <div key="device-${key}" className="d-flex flex-column mb-4">
-                        <div className="d-flex flex-row">
-                            <h1 className="device-label d-flex flex-row collapsed ${device.active ? "text-primary" : ""}"
+                        <div className="d-flex flex-row align-items-center">
+                            <h1 className="device-label d-flex flex-row  me-2 collapsed ${device.active ? "text-primary" : ""}"
                                 data-bs-toggle="collapse" data-bs-target="#collapse-${key}">
                                 <div><i className="bi bi-chevron-right collapse-arrow"></i></div>
                                 ${device.title}
                             </h1>
+                            ${(device.indicators || []).map((indicator, i) => html`
+                                <${Indicator} key="${i}" indicator=${indicator} small=${true}/>
+                            `)}
                             <div className="flex-fill"></div>
                             <form>
                                 <div className="btn-group" role="group">
