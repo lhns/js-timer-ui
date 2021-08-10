@@ -2,12 +2,17 @@
   "indicators": [
     {
       "type": "rain",
+      "text": null,
       "description": ""
     }
   ],
   "devices": {
     "wein": {
       "title": "Wein & Himbeeren",
+      "indicators": {
+        "type": "moisture",
+        "text": "50%"
+      },
       "override": false,
       "timeRanges": [
         [
