@@ -20,7 +20,9 @@
           1050
         ]
       ],
-      "active": true
+      "active": true,
+      "disabled": false,
+      "hidden": false
     },
     "wintergarten": {
       "title": "Wintergarten",

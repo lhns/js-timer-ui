@@ -62,6 +62,10 @@
         width: max(100%, 68em);
     }
 
+    .slider-container.disabled {
+        opacity: 0.6;
+    }
+
     .device-label {
         user-select: none;
         cursor: pointer;
@@ -85,7 +89,14 @@
 
     .timerange-button {
         margin-right: .5rem;
+    }
+
+    .timerange-button:not(.disabled) {
         cursor: pointer;
+    }
+
+    .timerange-button.disabled {
+        opacity: 0.5;
     }
 
     .scroll-handle-x {
@@ -165,7 +176,7 @@
         }
 
         render() {
-            const {disabledTimeRanges, timeRange} = this.props
+            const {disabledTimeRanges, timeRange, disabled} = this.props
             const {error, updateError} = this.state
             return html`
                 <${TimeRange.default} ...${
@@ -179,7 +190,8 @@
                             onChangeCallback: this.onChangeCallback,
                             disabledIntervals: disabledTimeRanges
                                     .map(e => toTimeRange(e))
-                                    .map(([start, end]) => ({start, end}))
+                                    .map(([start, end]) => ({start, end})),
+                            mode: disabled === true ? (current, next) => current : 3
                         }
                 }/>
             `
@@ -213,11 +225,13 @@
         render() {
             const {indicator, small} = this.props
 
-            var icon = null
+            let icon = null
             if (indicator.type === "rain") {
                 icon = html`<i className="bi bi-droplet"></i>`
             } else if (indicator.type === "moisture") {
                 icon = html`<i className="bi bi-moisture"></i>`
+            } else if (indicator.type === "water") {
+                icon = html`<i className="bi bi-water"></i>`
             }
 
             const H = small ? "h4" : "h1"
@@ -319,7 +333,7 @@
                     `)}
                     <div className="flex-fill"></div>
                 </div>
-                ${Object.entries(devices).map(([key, device]) => html`
+                ${Object.entries(devices).filter(e => !e.hidden).map(([key, device]) => html`
                     <div key="device-${key}" className="d-flex flex-column mb-4">
                         <div className="d-flex flex-row align-items-center">
                             <h1 className="device-label d-flex flex-row  me-2 collapsed ${device.active ? "text-primary" : ""}"
@@ -335,47 +349,59 @@
                                 <div className="btn-group" role="group">
                                     <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-1"
                                            autoComplete="off" checked=${device.override === null}
-                                           onChange=${() => this.updateState(state => state.devices[key].override = null)}/>
+                                           disabled=${device.disabled === true}
+                                           onChange=${() => (device.disabled === true) ? null : this.updateState(state => state.devices[key].override = null)}/>
                                     <label className="btn btn-outline-primary"
                                            htmlFor="mode-radio-${key}-1">Auto</label>
                                     <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-2"
                                            autoComplete="off" checked=${device.override === true}
-                                           onChange=${() => this.updateState(state => state.devices[key].override = true)}/>
+                                           disabled=${device.disabled === true}
+                                           onChange=${() => (device.disabled === true) ? null : this.updateState(state => state.devices[key].override = true)}/>
                                     <label className="btn btn-outline-success" htmlFor="mode-radio-${key}-2">On</label>
                                     <input type="radio" className="btn-check" name="mode-radio" id="mode-radio-${key}-3"
                                            autoComplete="off" checked=${device.override === false}
-                                           onChange=${() => this.updateState(state => state.devices[key].override = false)}/>
+                                           disabled=${device.disabled === true}
+                                           onChange=${() => (device.disabled === true) ? null : this.updateState(state => state.devices[key].override = false)}/>
                                     <label className="btn btn-outline-danger" htmlFor="mode-radio-${key}-3">Off</label>
                                 </div>
                             </form>
                         </div>
                         <div className="collapse mb-3" id="collapse-${key}">
                             <div className="w-100 mb-3" style=${{overflowX: "auto"}}>
-                                <div className="slider-container">
+                                <div className="slider-container ${(device.disabled === true) ? "disabled" : ""}">
                                     ${device.timeRanges.map((timeRange, i) => html`
                                         <${TimeSlider} key="${i}" ...${{
                                             timeRange,
                                             disabledTimeRanges: device.timeRanges.slice(0, i),
+                                            disabled: device.disabled,
                                             onChange: (timeRange) => {
-                                                this.updateState(state => {
-                                                    state.devices[key].timeRanges[i] = timeRange
-                                                    state.test = (state.test || 0) + 1
-                                                })
+                                                if (device.disabled !== true) {
+                                                    this.updateState(state => {
+                                                        state.devices[key].timeRanges[i] = timeRange
+                                                        state.test = (state.test || 0) + 1
+                                                    })
+                                                }
                                             }
                                         }}/>
                                         <div key="handle-${i}" className="w-100 scroll-handle-x"/>
                                     `)}
                                 </div>
                             </div>
-                            <i className="bi bi-dash-circle text-danger timerange-button" style=${{fontSize: "30px"}}
+                            <i className="bi bi-dash-circle text-danger timerange-button ${(device.disabled === true) ? "disabled" : ""}"
+                               style=${{fontSize: "30px"}}
                                onClick=${() => {
-                                   this.updateState(state => state.devices[key].timeRanges.pop())
+                                   if (device.disabled !== true) {
+                                       this.updateState(state => state.devices[key].timeRanges.pop())
+                                   }
                                }}></i>
-                            <i className="bi bi-plus-circle text-success timerange-button" style=${{fontSize: "30px"}}
+                            <i className="bi bi-plus-circle text-success timerange-button ${(device.disabled === true) ? "disabled" : ""}"
+                               style=${{fontSize: "30px"}}
                                onClick=${() => {
-                                   let timeRange = fromTimeRange([startTime, startTime])
-                                   timeRange[1] += step
-                                   this.updateState(state => state.devices[key].timeRanges.push(timeRange))
+                                   if (device.disabled !== true) {
+                                       let timeRange = fromTimeRange([startTime, startTime])
+                                       timeRange[1] += step
+                                       this.updateState(state => state.devices[key].timeRanges.push(timeRange))
+                                   }
                                }}></i>
                         </div>
                     </div>
