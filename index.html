@@ -333,7 +333,7 @@
                     `)}
                     <div className="flex-fill"></div>
                 </div>
-                ${Object.entries(devices).filter(e => !e.hidden).map(([key, device]) => html`
+                ${Object.entries(devices).filter(([key, e]) => !e.hidden).map(([key, device]) => html`
                     <div key="device-${key}" className="d-flex flex-column mb-4">
                         <div className="d-flex flex-row align-items-center">
                             <h1 className="device-label d-flex flex-row  me-2 collapsed ${device.active ? "text-primary" : ""}"
@@ -372,7 +372,8 @@
                                     ${device.timeRanges.map((timeRange, i) => html`
                                         <${TimeSlider} key="${i}" ...${{
                                             timeRange,
-                                            disabledTimeRanges: device.timeRanges.slice(0, i),
+                                            disabledTimeRanges: device.timeRanges.slice(0, i)
+                                                    .concat(Object.entries(devices).filter(([k, d]) => k !== key && d.disabled !== true).flatMap(([k, d]) => d.timeRanges)),
                                             disabled: device.disabled,
                                             onChange: (timeRange) => {
                                                 if (device.disabled !== true) {
